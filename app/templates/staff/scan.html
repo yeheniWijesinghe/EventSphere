@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Gate scanner{% endblock %}
+{% block content %}
+<div class="scan-wrap">
+<div class="page-head"><div><h1 class="h3"><i class="bi bi-qr-code-scan"></i> Gate scanner</h1><p class="lede">Pick the event at this gate, then scan each ticket.</p></div></div>
+<div class="card mb-3"><div class="card-body">
+  <label class="form-label" for="event">Event at this gate</label>
+  <select id="event" class="form-select form-select-lg">
+    {% for e in events %}
+    <option value="{{ e.id }}" {% if selected == e.id %}selected{% endif %}>{{ e.title }} – {{ e.start_time|dt('%d %b %H:%M') }}</option>
+    {% else %}
+    <option value="0">No events in the next 2 days</option>
+    {% endfor %}
+  </select>
+</div></div>
+
+<div id="result" class="scan-result scan-wait mb-3 text-center" aria-live="assertive">
+  <div class="fw-bold fs-5">Ready to scan</div><div class="small">Point the camera at a ticket QR code, or type the code below.</div>
+</div>
+
+<div class="card mb-3"><div class="card-body">
+  <div id="reader"></div>
+  <div class="d-flex gap-2 justify-content-center mt-3">
+    <button id="startCam" class="btn btn-es btn-lg"><i class="bi bi-camera"></i> Start camera</button>
+    <button id="stopCam" class="btn btn-outline-secondary btn-lg d-none">Stop camera</button>
+  </div>
+  <div id="camErr" class="small text-danger text-center mt-2"></div>
+</div></div>
+
+<form id="manual" class="card"><div class="card-body">
+  <label class="form-label" for="code">Type a ticket code instead</label>
+  <div class="input-group input-group-lg">
+    <input type="text" id="code" class="form-control" placeholder="Ticket code" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="btn btn-es" type="submit">Check</button>
+  </div>
+</div></form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+const CSRF = "{{ csrf_token }}";
+const IS_ADMIN = {{ 'true' if user and user.role == 'admin' else 'false' }};
+const resultBox = document.getElementById('result');
+let lastCode = null, lastAt = 0, busy = false, scanner = null;
+
+function show(ok, title, detail, why) {
+  resultBox.className = 'scan-result mb-3 text-center ' + (ok ? 'scan-admit' : 'scan-reject');
+  resultBox.innerHTML = '<div class="fs-3 fw-bold"></div><div></div><div class="small mt-1 opacity-75"></div>';
+  resultBox.children[0].textContent = title;
+  resultBox.children[1].textContent = detail;
+  resultBox.children[2].textContent = why || '';
+  if (navigator.vibrate) navigator.vibrate(ok ? 120 : [80, 60, 80]);
+}
+
+async function check(code) {
+  code = (code || '').trim();
+  const now = Date.now();
+  // Debounce: the camera reads the same QR many times per second.
+  if (!code || busy || (code === lastCode && now - lastAt < 4000)) return;
+  lastCode = code; lastAt = now; busy = true;
+  try {
+    const res = await fetch('/staff/scan', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF},
+      body: JSON.stringify({code: code, event_id: Number(document.getElementById('event').value)})
+    });
+    const d = await res.json();
+    const why = (IS_ADMIN && d.rule) ? 'TicketAgent rule ' + d.rule + ': ' + d.rule_text : '';
+    if (d.admitted) {
+      show(true, '✔ ADMIT', (d.holder || '') + (d.category ? ' · ' + d.category : '') + (d.suspicious ? ' · ⚠ suspicious repeat scans' : ''), why);
+    } else {
+      show(false, '✖ ' + (d.result || 'REJECTED').replace('_', ' '), (d.reason || d.detail || 'Rejected') + (d.suspicious ? ' · ⚠ possible shared screenshot' : ''), why);
+    }
+  } catch (e) {
+    show(false, 'Network error', 'Try again');
+  } finally { busy = false; }
+}
+
+document.getElementById('manual').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  lastCode = null;
+  check(document.getElementById('code').value);
+  document.getElementById('code').value = '';
+});
+
+document.getElementById('startCam').addEventListener('click', async function () {
+  document.getElementById('camErr').textContent = '';
+  try {
+    scanner = scanner || new Html5Qrcode('reader');
+    await scanner.start({facingMode: 'environment'}, {fps: 10, qrbox: {width: 230, height: 230}}, (text) => check(text));
+    this.classList.add('d-none');
+    document.getElementById('stopCam').classList.remove('d-none');
+  } catch (e) {
+    document.getElementById('camErr').textContent = 'Camera unavailable (' + e + '). Use manual entry; the camera needs HTTPS and permission.';
+  }
+});
+document.getElementById('stopCam').addEventListener('click', async function () {
+  if (scanner) await scanner.stop();
+  this.classList.add('d-none');
+  document.getElementById('startCam').classList.remove('d-none');
+});
+</script>
+{% endblock %}

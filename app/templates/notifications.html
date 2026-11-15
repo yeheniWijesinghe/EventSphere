@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Notifications</h1><p class="lede">{% if unread %}{{ unread }} unread{% else %}You're all caught up.{% endif %}</p></div>
+  {% if unread %}
+  <form method="post" action="/notifications/read">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-check2-all"></i> Mark all as read</button>
+  </form>
+  {% endif %}
+</div>
+{% if not items %}<div class="empty"><i class="bi bi-bell-slash"></i><p>No notifications yet. Booking confirmations and waitlist offers will show up here.</p></div>{% endif %}
+<div class="list-group">
+  {% for n in items %}
+  <a href="{{ n.link or '#' }}" class="list-group-item list-group-item-action">
+    <div class="note {% if not n.read %}unread{% endif %}">
+      <span class="dot" aria-hidden="true"></span>
+      <div>
+        <div class="d-flex justify-content-between gap-2"><span class="note-title">{{ n.title }}</span><span class="small text-muted text-nowrap">{{ n.created_at|dt('%d %b %H:%M') }}</span></div>
+        <div class="small text-muted">{{ n.body }}</div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

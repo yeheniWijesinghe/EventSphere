@@ -1,0 +1,15 @@
+{# Explainable agents: show which rule produced a decision and what the agent knew. #}
+{% macro why(c, rule=None, rule_text=None) %}
+{% set r = rule or (c.rule if c else None) %}
+{% if r %}
+<div class="why small mt-2">
+  <i class="bi bi-lightbulb"></i> <b>Why?</b> Rule <span class="badge text-bg-dark">{{ r }}</span>
+  {{ rule_text or (c.rule_text if c else '') }}
+  {% if c and c.evidence %}
+  <div class="text-muted">What the agent knew:
+    {% for k, v in c.evidence.items() %}{{ k|replace('_', ' ') }} = <b>{{ v }}</b>{% if not loop.last %}, {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endmacro %}

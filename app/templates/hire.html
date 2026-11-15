@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% from "_why.html" import why %}
+{% block title %}Hire a venue{% endblock %}
+{% block content %}
+{% set is_admin = user and user.role == 'admin' %}
+<div class="page-head">
+  <div><h1>Hire a venue</h1>
+  <p class="lede">Book a whole venue for a farewell, reception or club meeting. Most requests are confirmed straight away. If your time isn't free, you'll see the closest alternatives.</p></div>
+  <a href="/hire/mine" class="btn btn-outline-secondary btn-sm"><i class="bi bi-list-ul"></i> My hires</a>
+</div>
+
+{% if reply %}
+  {% set c = reply.content %}
+  <div class="card result-card mb-4 {% if perf == 'AGREE' %}result-ok{% elif perf == 'INFORM' %}result-wait{% elif perf == 'PROPOSE' %}result-alt{% else %}result-bad{% endif %}" role="status"><div class="card-body">
+    {% if is_admin %}
+    <div class="small text-muted mb-2"><span class="badge perf perf-{{ perf }}">{{ perf }}</span> from {{ reply.sender }} ·
+      <a href="/admin/conversations/{{ reply.conversation_id }}">view conversation</a></div>
+    {% endif %}
+    {% if perf == 'AGREE' %}
+      <h2 class="h4 text-success mb-2"><i class="bi bi-check-circle-fill"></i> Booking confirmed</h2>
+      <p class="mb-1"><b>{{ c.venue_name }}</b> · {{ c.start|dt }} – {{ c.end|dt('%H:%M') }}</p>
+      <p class="mb-0">Total <span class="price fs-5">{{ c.price|money }}</span></p>
+    {% elif perf == 'INFORM' %}
+      <h2 class="h4 mb-2"><i class="bi bi-hourglass-split text-warning"></i> Request received, awaiting approval</h2>
+      <p class="mb-1">Because {{ c.reason|replace('Needs organiser approval: ', '')|lower }}, our events team will review this request. The time is reserved for you in the meantime.</p>
+      <p class="mb-0">Quoted price <span class="price fs-5">{{ c.price|money }}</span></p>
+    {% elif perf == 'PROPOSE' %}
+      <h2 class="h4 mb-1"><i class="bi bi-calendar2-week text-es"></i> That time isn't available</h2>
+      <p class="text-muted">{{ c.reason }}. These options are free:</p>
+      {% for a in c.alternatives %}
+      <form method="post" action="/hire" class="alt-option">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="venue_id" value="{{ a.venue_id }}">
+        <input type="hidden" name="start" value="{{ a.start }}">
+        <input type="hidden" name="end" value="{{ a.end }}">
+        <input type="hidden" name="guests" value="{{ form.guests }}">
+        <input type="hidden" name="purpose" value="{{ form.purpose }}">
+        <div><b>{{ a.venue_name }}</b><div class="small">{{ a.start|dt }} – {{ a.end|dt('%H:%M') }}</div><div class="small text-muted">{{ a.note|capitalize }} · <b class="text-es">{{ a.price|money }}</b></div></div>
+        <button class="btn btn-sm btn-es">Book this option</button>
+      </form>
+      {% endfor %}
+    {% else %}
+      <h2 class="h4 text-danger mb-2"><i class="bi bi-x-circle"></i> We couldn't book that</h2>
+      <p class="mb-0">{{ c.reason }}</p>
+    {% endif %}
+    {% if c.rounds %}
+      {% set top = c.rounds|map(attribute='price')|max %}
+      <div class="nego-box">
+        <div class="d-flex justify-content-between flex-wrap gap-2 mb-1"><b>Price negotiation</b><span class="small text-muted">Your budget {{ c.budget|money }}</span></div>
+        <ol class="nego">
+          {% for r in c.rounds %}
+          <li class="{{ 'mine' if r.who == 'HirerAgent' else '' }}">
+            <span class="who">{{ 'Your offer' if r.who == 'HirerAgent' else 'Venue' }}</span>
+            <span class="bar" style="width: {{ ((r.price / top) * 45 if top else 0)|round(1) }}%" aria-hidden="true"></span>
+            <span class="fw-semibold">{{ r.price|money }}</span>{% if r.note %}<span class="text-muted small">{{ r.note }}</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+        {% if c.saved %}<div class="small text-success fw-semibold"><i class="bi bi-piggy-bank"></i> You saved {{ c.saved|money }} on the list price.</div>{% endif %}
+      </div>
+    {% endif %}
+    {% if is_admin %}{{ why(c) }}{% endif %}
+    {% if c.breakdown %}
+      <details class="small mt-3"><summary class="fw-semibold">How this price was worked out</summary>
+        <div class="mt-1">{{ c.breakdown.hours }} h × {{ c.breakdown.hourly_rate|money }} = {{ c.breakdown.base_price|money }}
+        {% if c.breakdown.weekend_hours %}· weekend rate on {{ c.breakdown.weekend_hours }} h{% endif %}
+        {% if c.breakdown.peak_hours %}· evening rate on {{ c.breakdown.peak_hours }} h{% endif %}
+        {% if c.breakdown.negotiated_from %}· list price {{ c.breakdown.negotiated_from|money }}, negotiated to {{ c.price|money }}{% endif %}</div>
+      </details>
+    {% endif %}
+  </div></div>
+{% endif %}
+
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+<div class="row g-4">
+  <div class="col-12 col-lg-8">
+    <form method="post" action="/hire" class="card"><div class="card-body">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="mb-3">
+        <label class="form-label" for="venue">Venue</label>
+        <select name="venue_id" id="venue" class="form-select" required>
+          {% for v in venues if v.open_for_hire %}
+          <option value="{{ v.id }}" {% if form.venue_id == v.id|string %}selected{% endif %}>
+            {{ v.name }} – up to {{ v.capacity }} guests · {{ v.hourly_rate|money }}/hour
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-sm-6"><label class="form-label" for="start">Start</label><input type="datetime-local" name="start" id="start" class="form-control" value="{{ form.start }}" required></div>
+        <div class="col-12 col-sm-6"><label class="form-label" for="end">End</label><input type="datetime-local" name="end" id="end" class="form-control" value="{{ form.end }}" required></div>
+      </div>
+      <div class="row g-3">
+        <div class="col-4"><label class="form-label" for="guests">Guests</label><input type="number" min="1" name="guests" id="guests" class="form-control" value="{{ form.guests }}" required></div>
+        <div class="col-8"><label class="form-label" for="purpose">Occasion</label><input type="text" name="purpose" id="purpose" class="form-control" maxlength="300" placeholder="e.g. Batch farewell" value="{{ form.purpose }}" required></div>
+      </div>
+
+      <div class="nego-box">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="negotiate" name="negotiate" value="1" {% if form.negotiate %}checked{% endif %}>
+          <label class="form-check-label fw-semibold" for="negotiate">Negotiate the price for me</label>
+        </div>
+        <div class="hint">We'll make offers on your behalf, starting below the list price and never going above your budget.</div>
+        <div id="negoFields" class="row g-2 mt-1 {% if not form.negotiate %}d-none{% endif %}">
+          <div class="col-6 col-sm-4"><label class="form-label small" for="budget">Your budget (Rs.)</label><input type="number" min="0" step="100" name="budget" id="budget" class="form-control" value="{{ form.budget or '' }}" {% if form.negotiate %}required{% endif %}></div>
+          <div class="col-6 col-sm-4"><label class="form-label small" for="flex">Flexible time?</label>
+            <select name="flex_hours" id="flex" class="form-select">
+              {% for h in range(0, 4) %}<option value="{{ h }}" {% if form.flex_hours == h %}selected{% endif %}>{% if h == 0 %}Exact time only{% else %}± {{ h }} hour{{ 's' if h > 1 }}{% endif %}</option>{% endfor %}
+            </select></div>
+          <div class="col-12 col-sm-4 d-flex align-items-end"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="any_venue" id="anyv" value="1" {% if form.any_venue %}checked{% endif %}><label class="form-check-label small" for="anyv">Any suitable venue</label></div></div>
+        </div>
+      </div>
+      <button class="btn btn-es btn-lg w-100 mt-3" id="askBtn">{% if form.negotiate %}Find the best price{% else %}Check availability{% endif %}</button>
+    </div></form>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="card"><div class="card-body">
+      <h2 class="panel-title"><i class="bi bi-info-circle text-es"></i> Good to know</h2>
+      <ul class="small text-muted mb-0 ps-3 guide">
+        <li>Bookings run between {{ '%02d'|format(rules.HIRE_OPEN_HOUR) }}:00 and {{ rules.HIRE_CLOSE_HOUR }}:00 on the same day.</li>
+        <li>Hire for {{ rules.HIRE_MIN_HOURS }} to {{ rules.HIRE_MAX_HOURS }} hours, at least {{ rules.HIRE_MIN_LEAD_HOURS }} hours in advance.</li>
+        <li>Weekend and evening (after {{ rules.PEAK_START_HOUR }}:00) rates are higher.</li>
+        <li>Large groups, long bookings and high-value requests are reviewed by our events team.</li>
+      </ul>
+    </div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('negotiate').addEventListener('change', function () {
+  document.getElementById('negoFields').classList.toggle('d-none', !this.checked);
+  document.getElementById('budget').required = this.checked;
+  document.getElementById('askBtn').textContent = this.checked ? 'Find the best price' : 'Check availability';
+});
+</script>
+{% endblock %}

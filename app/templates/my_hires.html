@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}My venue hires{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>My venue hires</h1><p class="lede">Requests to book a whole venue, and what was decided.</p></div>
+  <a href="/hire" class="btn btn-es"><i class="bi bi-plus-lg"></i> New request</a>
+</div>
+{% if not hires %}<div class="empty"><i class="bi bi-building"></i><p>You haven't asked to hire a venue yet.</p><a href="/hire" class="btn btn-es btn-sm">Hire a venue</a></div>{% endif %}
+<div class="list-group">
+  {% set colours = {'CONFIRMED': 'pill-ok', 'PENDING_APPROVAL': 'pill-warn', 'REJECTED': 'pill-bad'} %}
+  {% set labels = {'CONFIRMED': 'Confirmed', 'PENDING_APPROVAL': 'Awaiting approval', 'REJECTED': 'Not approved'} %}
+  {% for h in hires %}
+  <div class="list-group-item">
+    <div class="row-link">
+      <div class="mini-date"><span class="d">{{ h.start_time|dt('%d') }}</span><span class="m">{{ h.start_time|dt('%b') }}</span></div>
+      <div>
+        <div class="row-title">{{ h.venue.name }} <span class="fw-normal text-muted">· {{ h.purpose }}</span></div>
+        <div class="row-sub">{{ h.start_time|dt('%a %H:%M') }} – {{ h.end_time|dt('%H:%M') }} · {{ h.guests }} guests · {{ h.price|money }}</div>
+        {% if h.decision_reason %}<div class="row-sub">{{ h.decision_reason }}</div>{% endif %}
+      </div>
+      <div class="row-end"><span class="pill {{ colours.get(h.status, '') }}">{{ labels.get(h.status, h.status|replace('_', ' ')|lower|capitalize) }}</span></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

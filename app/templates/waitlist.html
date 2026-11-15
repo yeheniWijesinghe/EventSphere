@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Waitlist{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>My waitlist</h1>
+  <p class="lede">When tickets free up, they're held for the next person in the queue for {{ hold_minutes }} minutes. If they aren't claimed in time, they pass to the next person.</p></div></div>
+{% if joined %}<div class="alert alert-success"><i class="bi bi-check-circle-fill"></i> You joined the waitlist. We'll notify you when tickets are held for you.</div>{% endif %}
+{% if not entries %}<div class="empty"><i class="bi bi-hourglass"></i><p>You're not on any waitlist. When an event sells out, you can join its waitlist from the event page.</p><a href="/" class="btn btn-es btn-sm">Browse events</a></div>{% endif %}
+{% set colours = {'WAITING': 'pill-info', 'OFFERED': 'pill-warn', 'CLAIMED': 'pill-ok', 'EXPIRED': 'pill-bad', 'REMOVED': ''} %}
+{% set labels = {'WAITING': 'In the queue', 'OFFERED': 'Tickets held for you', 'CLAIMED': 'Claimed', 'EXPIRED': 'Hold expired', 'REMOVED': 'Left'} %}
+<div class="row g-3">
+  {% for e in entries %}
+  <div class="col-12 col-md-6">
+    <div class="card h-100"><div class="card-body">
+      <div class="d-flex justify-content-between gap-2">
+        <div>
+          <div class="row-title">{{ e.event.title }}</div>
+          <div class="row-sub">{{ e.quantity }} × {{ e.category.name }} · {{ e.event.start_time|dt('%a %d %b, %H:%M') }}</div>
+        </div>
+        <span class="pill {{ colours.get(e.status, '') }} align-self-start">{{ labels.get(e.status, e.status|lower) }}</span>
+      </div>
+      {% if e.status == 'WAITING' %}
+        <div class="d-flex align-items-center gap-2 mt-3"><span class="queue-pos">#{{ positions.get(e.id, '?') }}</span><span class="small text-muted">your place in the queue</span></div>
+      {% elif e.status == 'OFFERED' %}
+        <div class="hold">
+          <div class="small fw-semibold">Time left to claim your tickets</div>
+          <div class="countdown" data-seconds="{{ seconds_left.get(e.id, 0) }}" role="timer" aria-live="off">--:--</div>
+        </div>
+        <form method="post" action="/waitlist/{{ e.id }}/claim">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label class="form-label small" for="pm{{ e.id }}">Payment method</label>
+          <select name="payment_method" id="pm{{ e.id }}" class="form-select mb-2">
+            {% for key, label in payment_methods.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+          </select>
+          <button class="btn btn-es btn-lg w-100">Claim and pay {{ (e.category.price * e.quantity)|money }}</button>
+        </form>
+      {% endif %}
+      {% if e.status in ('WAITING', 'OFFERED') %}
+      <form method="post" action="/waitlist/{{ e.id }}/leave" class="mt-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-link btn-sm text-danger p-0">Leave the waitlist</button>
+      </form>
+      {% endif %}
+    </div></div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.countdown').forEach(function (el) {
+  let left = Number(el.dataset.seconds);
+  function tick() {
+    if (left <= 0) { el.textContent = 'Expired'; setTimeout(() => location.reload(), 4000); return; }
+    const m = Math.floor(left / 60), s = left % 60;
+    el.textContent = m + ':' + String(s).padStart(2, '0');
+    left -= 1;
+    setTimeout(tick, 1000);
+  }
+  tick();
+});
+</script>
+{% endblock %}

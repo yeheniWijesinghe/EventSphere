@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}My tickets{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>My tickets</h1><p class="lede">Open a booking to show its QR codes at the gate.</p></div></div>
+{% if not bookings %}
+<div class="empty"><i class="bi bi-ticket-perforated"></i><p>You haven't booked any tickets yet.</p><a href="/" class="btn btn-es btn-sm">Browse events</a></div>
+{% endif %}
+<div class="list-group">
+  {% for b in bookings %}
+  <a href="/bookings/{{ b.id }}" class="list-group-item list-group-item-action {% if b.status != 'CONFIRMED' %}is-muted{% endif %}">
+    <div class="row-link">
+      <div class="mini-date"><span class="d">{{ b.event.start_time|dt('%d') }}</span><span class="m">{{ b.event.start_time|dt('%b') }}</span></div>
+      <div>
+        <div class="row-title">{{ b.event.title }}</div>
+        <div class="row-sub">{{ b.event.start_time|dt('%a %H:%M') }} · {{ b.quantity }} ticket{{ 's' if b.quantity != 1 }} · {{ b.total_amount|money }}{% if b.status == 'CANCELLED' %} · refunded {{ b.refund_amount|money }}{% endif %}</div>
+      </div>
+      <div class="row-end">{% if b.status == 'CONFIRMED' %}<span class="pill pill-ok">Confirmed</span>{% else %}<span class="pill">Cancelled</span>{% endif %}</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -29,7 +29,7 @@
 {% block scripts %}
 <script>
 const steps = {{ steps|tojson }};
-const COLORS = {REQUEST: '#2b59c3', AGREE: '#1c7c4a', REFUSE: '#c93a3a', PROPOSE: '#c56a0a', INFORM: '#6b3fb5', FAILURE: '#18203a'};
+const COLORS = {REQUEST: '#2b59c3', AGREE: '#1c7c4a', REFUSE: '#c93a3a', PROPOSE: '#c56a0a', INFORM: '#6b3fb5', FAILURE: '#0e4f55'};
 const NS = 'http://www.w3.org/2000/svg';
 const svg = document.getElementById('seq');
 
@@ -65,8 +65,8 @@ lanes.forEach(name => {
   const g = el('g', {});
   const isAgent = name.endsWith('Agent');
   const rect = el('rect', {x: x - 66, y: 8, width: 132, height: 34, rx: 8,
-                           fill: isAgent ? '#dcefed' : (name === '*' ? '#fdf0d5' : '#f1f3f5'),
-                           stroke: isAgent ? '#0e6b66' : '#adb5bd'});
+                           fill: isAgent ? '#e3f1f0' : (name === '*' ? '#fff3d6' : '#f1f3f5'),
+                           stroke: isAgent ? '#0e4f55' : '#adb5bd'});
   g.appendChild(rect);
   g.appendChild(el('text', {x: x, y: 30, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 600},
                    name === '*' ? 'broadcast (all)' : name));

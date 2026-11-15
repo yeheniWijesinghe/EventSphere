@@ -98,6 +98,10 @@ class VenueAgent(Agent):
                                 for_hire: bool, exclude_event=None) -> list[tuple[datetime, datetime, str]]:
         """V8: earlier the same day, later the same day, then the same time on following days."""
         dur = end - start
+        # Alternatives are sent as minute-precision ISO strings, so search on whole minutes.
+        # Round up: a proposed slot must still respect the buffer after it is written out.
+        if start.second or start.microsecond:
+            start = start.replace(second=0, microsecond=0) + timedelta(minutes=1)
         step = timedelta(minutes=30)
         found: list[tuple[datetime, datetime, str]] = []
         day_start = start.replace(hour=R.HIRE_OPEN_HOUR if for_hire else 0, minute=0)

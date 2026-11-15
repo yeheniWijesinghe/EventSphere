@@ -2,8 +2,7 @@
 {% block title %}Sign in{% endblock %}
 {% block content %}
 <div class="auth-wrap">
-  <h1 class="mb-1">Welcome back</h1>
-  <p class="lede mb-3">Sign in to see your tickets and book events.</p>
+  <div class="page-head"><div><h1>Welcome back</h1><p class="lede">Sign in to see your tickets and book events.</p></div></div>
   <div class="card"><div class="card-body">
     {% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
     <form method="post" action="/login">

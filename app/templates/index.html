@@ -1,86 +1,146 @@
 {% extends "base.html" %}
 {% block title %}Events{% endblock %}
-{% block content %}
-<section class="discover">
-  <h1>What's on around campus</h1>
-  <p class="lede">Concerts, workshops, seminars and conferences. Book in a few taps and walk in with the QR code on your phone.</p>
-  <form method="get" action="/" role="search">
-    <div class="searchbar row g-2 mx-0">
-      <div class="col-12 col-md-6">
-        <label class="visually-hidden" for="q">Search events</label>
-        <input type="search" name="q" id="q" class="form-control form-control-lg" placeholder="Search by title, speaker or topic" value="{{ f.q }}">
+
+{% block hero %}
+{% set pics = venues|selectattr('image_url')|list %}
+<section class="hero">
+  <div class="hero-sun" aria-hidden="true"></div>
+  <div class="container position-relative">
+    <div class="row align-items-center g-4">
+      <div class="col-12 col-lg-6 hero-copy">
+        <div class="script hero-kicker">Discover</div>
+        <h1 class="hero-title">Campus Events</h1>
+        <p class="hero-lede">Concerts, workshops, seminars and conferences, all in one place. Book in a few taps and walk in with the QR code on your phone.</p>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="#events" class="btn btn-es btn-lg">Browse events</a>
+          <a href="/hire" class="btn btn-ghost btn-lg">Hire a venue</a>
+        </div>
       </div>
-      <div class="col-7 col-md-3">
-        <label class="visually-hidden" for="cat">Category</label>
-        <select name="category" id="cat" class="form-select form-select-lg">
+      <div class="col-12 col-lg-6 d-none d-md-block">
+        <div class="collage">
+          {% for v in pics[:3] %}<img src="{{ v.image_url }}" alt="{{ v.name }}" class="collage-{{ loop.index }}" loading="lazy">{% endfor %}
+          <div class="hero-badge"><span class="n">{{ events|length }}</span><span class="t">events<br>on sale</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="torn-edge" aria-hidden="true"></div>
+</section>
+
+<div class="container">
+  <form method="get" action="/" role="search" class="search-card">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-5">
+        <label class="search-label" for="q"><i class="bi bi-search"></i> Keyword</label>
+        <input type="search" name="q" id="q" class="form-control" placeholder="Title, speaker or topic" value="{{ f.q }}">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="search-label" for="cat"><i class="bi bi-grid"></i> Category</label>
+        <select name="category" id="cat" class="form-select">
           <option value="">All categories</option>
           {% for c in categories %}<option value="{{ c }}" {% if f.category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
         </select>
       </div>
-      <div class="col-5 col-md-3 d-grid"><button class="btn btn-es btn-lg" type="submit"><i class="bi bi-search"></i> Search</button></div>
+      <div class="col-6 col-md-2">
+        <label class="search-label" for="venue_id"><i class="bi bi-geo-alt"></i> Venue</label>
+        <select name="venue_id" id="venue_id" class="form-select">
+          <option value="">Any venue</option>
+          {% for v in venues %}<option value="{{ v.id }}" {% if f.venue_id == v.id|string %}selected{% endif %}>{{ v.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-grid"><button class="btn btn-es" type="submit">Search</button></div>
     </div>
-    <div class="mt-2">
-      <a class="filters-toggle" data-bs-toggle="collapse" href="#adv" role="button" aria-expanded="{{ 'true' if advanced else 'false' }}" aria-controls="adv"><i class="bi bi-sliders"></i> Date, price and venue filters</a>
-    </div>
+    <a class="filters-toggle mt-2" data-bs-toggle="collapse" href="#adv" role="button" aria-expanded="{{ 'true' if advanced else 'false' }}" aria-controls="adv"><i class="bi bi-sliders"></i> Date and price filters</a>
     <div class="collapse {% if advanced %}show{% endif %}" id="adv">
-      <div class="filters-panel row g-2 mx-0">
-        <div class="col-12 col-md-4">
-          <label class="form-label" for="venue_id">Venue</label>
-          <select name="venue_id" id="venue_id" class="form-select form-select-sm">
-            <option value="">Any venue</option>
-            {% for v in venues %}<option value="{{ v.id }}" {% if f.venue_id == v.id|string %}selected{% endif %}>{{ v.name }}</option>{% endfor %}
-          </select>
-        </div>
-        <div class="col-6 col-md-2"><label class="form-label" for="df">From</label><input type="date" id="df" name="date_from" class="form-control form-control-sm" value="{{ f.date_from }}"></div>
-        <div class="col-6 col-md-2"><label class="form-label" for="dt">To</label><input type="date" id="dt" name="date_to" class="form-control form-control-sm" value="{{ f.date_to }}"></div>
-        <div class="col-6 col-md-2"><label class="form-label" for="pmin">Min price (Rs.)</label><input type="number" min="0" id="pmin" name="price_min" class="form-control form-control-sm" value="{{ f.price_min }}"></div>
-        <div class="col-6 col-md-2"><label class="form-label" for="pmax">Max price (Rs.)</label><input type="number" min="0" id="pmax" name="price_max" class="form-control form-control-sm" value="{{ f.price_max }}"></div>
-        <div class="col-12 d-flex gap-2 justify-content-end"><a href="/" class="btn btn-sm btn-outline-secondary">Clear filters</a><button class="btn btn-sm btn-es" type="submit">Apply filters</button></div>
+      <div class="row g-2 pt-2">
+        <div class="col-6 col-md-3"><label class="search-label" for="df">From</label><input type="date" id="df" name="date_from" class="form-control form-control-sm" value="{{ f.date_from }}"></div>
+        <div class="col-6 col-md-3"><label class="search-label" for="dt">To</label><input type="date" id="dt" name="date_to" class="form-control form-control-sm" value="{{ f.date_to }}"></div>
+        <div class="col-6 col-md-2"><label class="search-label" for="pmin">Min price (Rs.)</label><input type="number" min="0" id="pmin" name="price_min" class="form-control form-control-sm" value="{{ f.price_min }}"></div>
+        <div class="col-6 col-md-2"><label class="search-label" for="pmax">Max price (Rs.)</label><input type="number" min="0" id="pmax" name="price_max" class="form-control form-control-sm" value="{{ f.price_max }}"></div>
+        <div class="col-12 col-md-2 d-flex gap-2 align-items-end"><a href="/" class="btn btn-sm btn-outline-secondary flex-fill">Clear</a><button class="btn btn-sm btn-es flex-fill" type="submit">Apply</button></div>
       </div>
     </div>
   </form>
-
-  <nav class="cat-row-chips" aria-label="Browse by category">
-    <a href="/" class="cat-chip {% if not f.category %}active{% endif %}">All</a>
-    {% for c in categories %}<a href="/?category={{ c|urlencode }}" class="cat-chip {% if f.category == c %}active{% endif %}">{{ c }}</a>{% endfor %}
-  </nav>
-</section>
-
-<div class="results-head">
-  <h2>{% if f.q or f.category or advanced %}Matching events{% else %}Upcoming events{% endif %} <span class="text-muted fw-normal">({{ events|length }})</span></h2>
-  {% if user %}<a href="/hire" class="btn btn-outline-secondary btn-sm"><i class="bi bi-building"></i> Hire a whole venue</a>{% endif %}
 </div>
+{% endblock %}
 
-{% if not events %}
-<div class="empty">
-  <i class="bi bi-calendar-x"></i>
-  <p>No events match these filters. Try another keyword or category.</p>
-  <a href="/" class="btn btn-es btn-sm">Show all events</a>
-</div>
-{% endif %}
-<div class="row g-3">
-  {% for e in events %}
-  {% set left = e.categories|sum(attribute='available') %}
-  <div class="col-12 col-md-6 col-xl-4">
-    <a href="/events/{{ e.id }}" class="stub {% if left <= 0 %}is-soldout{% endif %}">
-      <div class="stub-date" {% if e.venue.image_url %}style="background-image: url('{{ e.venue.image_url }}')"{% endif %}>
-        <span class="d">{{ e.start_time|dt('%d') }}</span>
-        <span class="m">{{ e.start_time|dt('%b') }}</span>
-        <span class="t">{{ e.start_time|dt('%a %H:%M') }}</span>
-      </div>
-      <div class="stub-body">
-        <div><span class="chip">{{ e.category }}</span></div>
-        <h3 class="stub-title">{{ e.title }}</h3>
-        <div class="stub-meta"><i class="bi bi-geo-alt"></i> {{ e.venue.name }}</div>
-        <div class="stub-foot">
-          <span class="price">{% if e.min_price == 0 %}Free entry{% else %}From {{ e.min_price|money }}{% endif %}</span>
-          {% if left <= 0 %}<span class="pill pill-bad">Sold out</span>
-          {% elif left <= 10 %}<span class="pill pill-warn">{{ left }} left</span>
-          {% else %}<span class="pill pill-ok">On sale</span>{% endif %}
-        </div>
-      </div>
-    </a>
+{% block content %}
+{% set filtering = f.q or f.category or advanced or f.venue_id %}
+{% if not filtering %}
+<section class="section">
+  <div class="section-title text-center">
+    <h2><span class="script accent">Easy Steps</span> For Booking</h2>
+    <p>From finding an event to walking through the gate.</p>
   </div>
-  {% endfor %}
-</div>
+  <div class="row g-3 justify-content-center">
+    {% for icon, title, text in [('bi-search-heart', 'Choose your event', 'Search by keyword, category, venue, date or price.'), ('bi-credit-card-2-front', 'Make your payment', 'Pick your tickets and pay. Every booking is confirmed straight away.'), ('bi-qr-code', 'Show your QR code', 'Each ticket has its own QR code. Staff scan it once at the gate.')] %}
+    <div class="col-12 col-md-4">
+      <div class="step-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <span class="step-no">{{ loop.index }}</span>
+          <span class="step-icon"><i class="bi {{ icon }}"></i></span>
+        </div>
+        <h3>{{ title }}</h3>
+        <p>{{ text }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="promo-band">
+    <div class="promo-num">{{ venues|selectattr('open_for_hire')|list|length }}</div>
+    <div class="promo-text"><span>venues open for private hire</span><span class="script">Farewells, receptions &amp; club meetings</span></div>
+    <a href="/hire" class="btn btn-light-pill">Hire a venue</a>
+  </div>
+</section>
+{% endif %}
+
+<section class="section-sky" id="events">
+  <div class="torn-edge top" aria-hidden="true"></div>
+  <div class="section-title text-center">
+    <h2>{% if filtering %}<span class="script accent">Matching</span> Events{% else %}<span class="script accent">Trending</span> Events{% endif %}</h2>
+    <p>{{ events|length }} event{{ 's' if events|length != 1 }}{% if filtering %} match your search{% else %} with tickets on sale{% endif %}.</p>
+  </div>
+
+  <nav class="cat-chips" aria-label="Browse by category">
+    <a href="/#events" class="cat-chip {% if not f.category %}active{% endif %}">All</a>
+    {% for c in categories %}<a href="/?category={{ c|urlencode }}#events" class="cat-chip {% if f.category == c %}active{% endif %}">{{ c }}</a>{% endfor %}
+  </nav>
+
+  {% if not events %}
+  <div class="empty">
+    <i class="bi bi-calendar-x"></i>
+    <p>No events match these filters. Try another keyword or category.</p>
+    <a href="/" class="btn btn-es btn-sm">Show all events</a>
+  </div>
+  {% endif %}
+  <div class="row g-4">
+    {% for e in events %}
+    {% set left = e.categories|sum(attribute='available') %}
+    <div class="col-12 col-sm-6 col-lg-4">
+      <article class="event-card {% if left <= 0 %}is-soldout{% endif %}">
+        <a href="/events/{{ e.id }}" class="event-img" {% if e.venue.image_url %}style="background-image: url('{{ e.venue.image_url }}')"{% endif %} aria-label="{{ e.title }}">
+          <span class="date-tag"><b>{{ e.start_time|dt('%d') }}</b>{{ e.start_time|dt('%b') }}</span>
+          <span class="cat-tag">{{ e.category }}</span>
+        </a>
+        <div class="event-body">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <h3 class="event-title"><a href="/events/{{ e.id }}">{{ e.title }}</a></h3>
+            <div class="event-price">{% if e.min_price == 0 %}Free{% else %}<small>from</small>{{ e.min_price|money }}{% endif %}</div>
+          </div>
+          <ul class="event-facts">
+            <li><i class="bi bi-clock"></i> {{ e.start_time|dt('%a %d %b, %H:%M') }}</li>
+            <li><i class="bi bi-geo-alt"></i> {{ e.venue.name }}</li>
+            <li><i class="bi bi-ticket-perforated"></i>
+              {% if left <= 0 %}<span class="text-danger fw-semibold">Sold out</span>
+              {% elif left <= 10 %}<span class="text-sun fw-semibold">Only {{ left }} left</span>
+              {% else %}{{ left }} tickets left{% endif %}</li>
+          </ul>
+          <a href="/events/{{ e.id }}" class="btn btn-es w-100">{% if left <= 0 %}Join the waitlist{% else %}Book now{% endif %}</a>
+        </div>
+      </article>
+    </div>
+    {% endfor %}
+  </div>
+</section>
 {% endblock %}

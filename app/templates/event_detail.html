@@ -12,6 +12,7 @@
         <span class="chip">{{ event.category }}</span>
         <h1>{{ event.title }}</h1>
       </div>
+      <div class="torn-edge" aria-hidden="true"></div>
     </div>
     {% if event.status == 'CANCELLED' %}<div class="alert alert-danger mt-3 mb-0"><b>This event was cancelled.</b> All bookings were fully refunded.</div>{% endif %}
     {% if event.status == 'DRAFT' %}<div class="alert alert-secondary mt-3 mb-0">Draft. Only admins can see this page.</div>{% endif %}

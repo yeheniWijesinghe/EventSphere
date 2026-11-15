@@ -2,8 +2,7 @@
 {% block title %}Register{% endblock %}
 {% block content %}
 <div class="auth-wrap">
-  <h1 class="mb-1">Create your account</h1>
-  <p class="lede mb-3">Book tickets, join waitlists and hire venues.</p>
+  <div class="page-head"><div><h1>Create your account</h1><p class="lede">Book tickets, join waitlists and hire venues.</p></div></div>
   <div class="card"><div class="card-body">
     {% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
     <form method="post" action="/register">

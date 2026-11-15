@@ -74,4 +74,5 @@ def register(request: Request, name: str = Form(...), email: str = Form(...), pa
 def logout(request: Request, csrf_token: str = Form("")):
     check_csrf(request, csrf_token)
     request.session.clear()
+    request.session["flash"] = "You have signed out. See you at the next event!"
     return RedirectResponse("/", status_code=303)

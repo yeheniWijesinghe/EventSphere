@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Agent messages{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Agent message log</h1><p class="lede">Every message between agents, with its performative and conversation id. Click a conversation id to follow one user action across several agents.</p></div></div>
+<form method="get" class="card mb-3"><div class="card-body row g-2 mx-0">
+  <div class="col-12 col-md-5"><input type="text" name="conversation" class="form-control form-control-sm" placeholder="Conversation id" value="{{ conversation }}"></div>
+  <div class="col-8 col-md-4">
+    <select name="agent" class="form-select form-select-sm">
+      <option value="">All agents</option>
+      {% for n in agent_names %}<option value="{{ n }}" {% if agent == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-4 col-md-3 d-flex gap-2"><button class="btn btn-es btn-sm flex-fill">Filter</button><a href="/admin/messages" class="btn btn-outline-secondary btn-sm">Clear</a></div>
+</div></form>
+{% if conversation %}<div class="alert alert-light border small">Showing conversation <code>{{ conversation }}</code> in order ({{ msgs|length }} messages).
+  <a href="/admin/conversations/{{ conversation }}" class="btn btn-sm btn-es ms-2"><i class="bi bi-play-fill"></i> Watch it as a live diagram</a></div>{% endif %}
+<div class="card"><div class="table-responsive">
+  <table class="table table-sm align-middle mb-0 small">
+    <thead><tr><th>#</th><th>Time</th><th>Conversation</th><th>From → To</th><th>Performative</th><th>Action</th><th>Rule</th><th>Content</th></tr></thead>
+    <tbody>
+    {% for m, content in msgs %}
+      <tr>
+        <td class="small text-muted">{{ m.id }}{% if m.in_reply_to %}<br>↳{{ m.in_reply_to }}{% endif %}</td>
+        <td class="small text-nowrap">{{ m.created_at|dt('%d %b %H:%M:%S') }}</td>
+        <td class="small text-nowrap"><a href="/admin/messages?conversation={{ m.conversation_id }}">{{ m.conversation_id }}</a>
+          <a href="/admin/conversations/{{ m.conversation_id }}" title="Animated diagram" class="ms-1"><i class="bi bi-diagram-3"></i></a></td>
+        <td class="small text-nowrap">{{ m.sender }} → {{ m.receiver }}</td>
+        <td><span class="badge perf perf-{{ m.performative }}">{{ m.performative }}</span></td>
+        <td><code class="small">{{ m.action }}</code></td>
+        <td>{% if content.rule %}<span class="rule-tag" title="{{ content.rule_text }}">{{ content.rule }}</span>{% endif %}</td>
+        <td style="min-width: 220px"><pre class="json">{{ content|tojson(indent=1) }}</pre></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="text-center text-muted py-4">No messages yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Conversation {{ conversation }}{% endblock %}
+{% block content %}
+<a href="/admin/messages" class="back-link"><i class="bi bi-arrow-left"></i> Message log</a>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-1 mb-2">
+  <div>
+    <h1 class="h3 mb-0">Live conversation</h1>
+    <div class="small text-muted"><code>{{ conversation }}</code> · {{ steps|length }} messages · one user action followed across the agents</div>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    <select id="speed" class="form-select form-select-sm w-auto" aria-label="Speed">
+      <option value="1200">Slow</option><option value="650" selected>Normal</option><option value="250">Fast</option>
+    </select>
+    <button id="play" class="btn btn-es btn-sm"><i class="bi bi-play-fill"></i> Replay</button>
+    <button id="all" class="btn btn-outline-secondary btn-sm">Show all</button>
+  </div>
+</div>
+<div class="small mb-2">
+  {% for p in ['REQUEST', 'AGREE', 'REFUSE', 'PROPOSE', 'INFORM', 'FAILURE'] %}<span class="badge perf perf-{{ p }} me-1">{{ p }}</span>{% endfor %}
+</div>
+<div class="card card-body p-2 mb-3" style="overflow-x: auto">
+  <svg id="seq" role="img" aria-label="Sequence diagram of agent messages"></svg>
+</div>
+<div class="card card-body">
+  <div class="small text-muted mb-1">Click an arrow to see the full message</div>
+  <div id="detail" class="small">–</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const steps = {{ steps|tojson }};
+const COLORS = {REQUEST: '#2b59c3', AGREE: '#1c7c4a', REFUSE: '#c93a3a', PROPOSE: '#c56a0a', INFORM: '#6b3fb5', FAILURE: '#18203a'};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('seq');
+
+// Lanes: people/UI first, agents in order of appearance, broadcast last.
+const lanes = [];
+steps.forEach(s => [s.from, s.to].forEach(n => { if (!lanes.includes(n)) lanes.push(n); }));
+lanes.sort((a, b) => (a === '*') - (b === '*'));
+const LANE_W = 150, TOP = 60, ROW = 46, LEFT = 20;
+const width = LEFT * 2 + lanes.length * LANE_W, height = TOP + steps.length * ROW + 30;
+svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+svg.setAttribute('width', width);
+svg.setAttribute('height', height);
+const laneX = name => LEFT + lanes.indexOf(name) * LANE_W + LANE_W / 2;
+
+function el(tag, attrs, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+const defs = el('defs', {});
+for (const p in COLORS) {
+  const m = el('marker', {id: 'arrow-' + p, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse'});
+  m.appendChild(el('path', {d: 'M0,0 L10,5 L0,10 z', fill: COLORS[p]}));
+  defs.appendChild(m);
+}
+svg.appendChild(defs);
+
+const heads = {};
+lanes.forEach(name => {
+  const x = laneX(name);
+  svg.appendChild(el('line', {x1: x, y1: TOP - 14, x2: x, y2: height - 10, stroke: '#c8cdd8', 'stroke-dasharray': '4 4'}));
+  const g = el('g', {});
+  const isAgent = name.endsWith('Agent');
+  const rect = el('rect', {x: x - 66, y: 8, width: 132, height: 34, rx: 8,
+                           fill: isAgent ? '#dcefed' : (name === '*' ? '#fdf0d5' : '#f1f3f5'),
+                           stroke: isAgent ? '#0e6b66' : '#adb5bd'});
+  g.appendChild(rect);
+  g.appendChild(el('text', {x: x, y: 30, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 600},
+                   name === '*' ? 'broadcast (all)' : name));
+  svg.appendChild(g);
+  heads[name] = rect;
+});
+
+const rows = steps.map((s, i) => {
+  const y = TOP + i * ROW + 20;
+  const x1 = laneX(s.from), x2 = laneX(s.to);
+  const g = el('g', {class: 'msg', style: 'cursor:pointer; opacity:0; transition: opacity .35s'});
+  g.appendChild(el('line', {x1: x1, y1: y, x2: x2 + (x2 > x1 ? -4 : 4), y2: y, stroke: COLORS[s.perf] || '#333',
+                            'stroke-width': 2, 'marker-end': `url(#arrow-${s.perf})`}));
+  const label = `${s.perf} ${s.action || ''}` + (s.rule ? `  [${s.rule}]` : '');
+  g.appendChild(el('text', {x: (x1 + x2) / 2, y: y - 6, 'text-anchor': 'middle', 'font-size': 11, fill: COLORS[s.perf] || '#333'}, label));
+  g.appendChild(el('text', {x: 4, y: y + 4, 'font-size': 9, fill: '#999'}, i + 1));
+  g.appendChild(el('rect', {x: Math.min(x1, x2), y: y - 18, width: Math.abs(x2 - x1) || 10, height: 26, fill: 'transparent'}));
+  g.addEventListener('click', () => showDetail(s, i));
+  svg.appendChild(g);
+  return g;
+});
+
+function showDetail(s, i) {
+  const d = document.getElementById('detail');
+  d.innerHTML = '';
+  const h = document.createElement('div');
+  h.innerHTML = `<b>#${i + 1}</b> <span class="badge perf perf-${s.perf}"></span> ${s.time}`;
+  h.querySelector('.badge').textContent = s.perf;
+  h.append(` ${s.from} → ${s.to === '*' ? 'everyone listening' : s.to}`);
+  const pre = document.createElement('pre');
+  pre.className = 'json mt-1';
+  pre.textContent = JSON.stringify(s.content, null, 2);
+  d.append(h, pre);
+}
+
+let timer = null;
+function play() {
+  clearTimeout(timer);
+  rows.forEach(r => r.style.opacity = 0);
+  Object.values(heads).forEach(r => r.setAttribute('stroke-width', 1));
+  let i = 0;
+  const delay = Number(document.getElementById('speed').value);
+  (function next() {
+    if (i >= rows.length) return;
+    rows[i].style.opacity = 1;
+    Object.values(heads).forEach(r => r.setAttribute('stroke-width', 1));
+    heads[steps[i].from].setAttribute('stroke-width', 3);
+    heads[steps[i].to].setAttribute('stroke-width', 3);
+    showDetail(steps[i], i);
+    i += 1;
+    timer = setTimeout(next, delay);
+  })();
+}
+document.getElementById('play').addEventListener('click', play);
+document.getElementById('all').addEventListener('click', () => { clearTimeout(timer); rows.forEach(r => r.style.opacity = 1); });
+play();
+</script>
+{% endblock %}

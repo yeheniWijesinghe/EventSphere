@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Hire requests{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Private hire requests</h1><p class="lede">Routine requests are confirmed by the VenueAgent automatically. Escalated ones wait here for you.</p></div></div>
+{% set colours = {'CONFIRMED': 'pill-ok', 'PENDING_APPROVAL': 'pill-warn', 'REJECTED': 'pill-bad'} %}
+<div class="list-group">
+  {% for h in hires %}
+  <div class="list-group-item {% if h.status == 'PENDING_APPROVAL' %}needs-review{% endif %}">
+    <div class="event-row">
+      <div class="flex-grow-1" style="min-width: 240px">
+        <div class="row-title">#{{ h.id }} {{ h.venue.name }} <span class="pill {{ colours.get(h.status, '') }} ms-1">{{ h.status|replace('_', ' ')|lower|capitalize }}</span></div>
+        <div class="row-sub">{{ h.start_time|dt }} – {{ h.end_time|dt('%H:%M') }} · {{ h.guests }} guests (cap. {{ h.venue.capacity }}) · <b class="text-body">{{ h.price|money }}</b></div>
+        <div class="row-sub">{{ h.user.name }} ({{ h.user.email }}) · {{ h.purpose }}</div>
+        {% if h.decision_reason %}<div class="why small mt-2">{{ h.decision_reason }}</div>{% endif %}
+      </div>
+      {% if h.status == 'PENDING_APPROVAL' %}
+      <div class="d-flex flex-column gap-2" style="min-width: 240px">
+        <form method="post" action="/admin/hires/{{ h.id }}/approve"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-success w-100"><i class="bi bi-check-lg"></i> Approve</button></form>
+        <form method="post" action="/admin/hires/{{ h.id }}/reject" class="input-group input-group-sm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input name="reason" class="form-control" placeholder="Reason for rejecting" aria-label="Reason for rejecting">
+          <button class="btn btn-outline-danger">Reject</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="list-group-item text-muted">No hire requests yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

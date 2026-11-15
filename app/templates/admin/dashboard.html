@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Organiser dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Organiser dashboard</h1><p class="lede">Sales, check-ins and what the agents are doing right now.</p></div>
+  <div class="d-flex gap-2">
+    <a href="/admin/events/new" class="btn btn-es"><i class="bi bi-plus-lg"></i> New event</a>
+    <a href="/admin/messages" class="btn btn-outline-secondary"><i class="bi bi-diagram-3"></i> Agent messages</a>
+  </div>
+</div>
+
+<div class="kpis mb-4">
+  <div class="kpi"><div class="k"><i class="bi bi-ticket-perforated"></i> Tickets sold</div><div class="stat">{{ totals.sold }}</div></div>
+  <div class="kpi"><div class="k"><i class="bi bi-cash-stack"></i> Revenue (simulated)</div><div class="stat">{{ totals.revenue|money }}</div></div>
+  <div class="kpi"><div class="k"><i class="bi bi-door-open"></i> Check-ins</div><div class="stat">{{ totals.checkins }}</div></div>
+  <a href="/admin/hires" class="kpi {% if totals.pending_hires %}alert-kpi{% endif %}"><div class="k"><i class="bi bi-inboxes"></i> Hire requests to review</div><div class="stat">{{ totals.pending_hires }}</div></a>
+</div>
+
+{% if suspicious %}
+<div class="alert alert-danger">
+  <b><i class="bi bi-exclamation-triangle-fill"></i> Suspicious repeated scans (TicketAgent)</b>
+  <ul class="mb-0 small mt-1">
+    {% for code, s in suspicious.items() %}<li>Ticket #{{ s.ticket_id }} (event {{ s.event_id }}) scanned {{ s.scans }} times · last {{ s.last|dt('%d %b %H:%M') }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-7"><div class="card h-100"><div class="card-body"><h2 class="panel-title">Tickets sold vs check-ins per event</h2><canvas id="salesChart" height="220"></canvas></div></div></div>
+  <div class="col-12 col-lg-5"><div class="card h-100"><div class="card-body"><h2 class="panel-title">Check-ins over the last 48 hours</h2><canvas id="checkinChart" height="220"></canvas>
+    {% if not checkin_chart.labels %}<div class="small text-muted">No check-ins yet.</div>{% endif %}</div></div></div>
+</div>
+
+<div class="card mb-4"><div class="card-body">
+  <h2 class="panel-title">Events</h2>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>Event</th><th>Status</th><th>Sold</th><th class="text-end">Check-ins</th><th class="text-end">Venue cap.</th><th class="text-end">Revenue</th></tr></thead>
+      <tbody>
+      {% set colours = {'DRAFT': '', 'PUBLISHED': 'pill-ok', 'CANCELLED': 'pill-bad'} %}
+      {% for r in rows %}
+        <tr>
+          <td><a href="/events/{{ r.event.id }}" class="fw-semibold">{{ r.event.title }}</a><div class="small text-muted">{{ r.event.start_time|dt('%d %b %H:%M') }} · {{ r.event.venue.name }}</div></td>
+          <td><span class="pill {{ colours.get(r.event.status, '') }}">{{ r.event.status|lower|capitalize }}</span></td>
+          <td style="min-width: 120px"><div class="small fw-semibold">{{ r.sold }} / {{ r.total }}</div><div class="cap-bar"><span style="width: {{ ((r.sold / r.total) * 100 if r.total else 0)|round(0) }}%"></span></div></td>
+          <td class="text-end">{{ r.checkins }}</td>
+          <td class="text-end">{{ r.capacity }}</td>
+          <td class="text-end fw-semibold">{{ r.revenue|money }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="text-muted text-center py-3">No events yet. <a href="/admin/events/new">Create one</a>.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div></div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-7">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="panel-title">The agent society</h2>
+      <div class="row g-2">
+      {% for a in agents %}
+        <div class="col-12 col-sm-6">
+          <div class="agent-card">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <span class="agent-name">{{ a.name }}</span>
+              <span class="mood mood-{{ a.mood.state }}" title="{{ a.mood.per_minute }} messages in the last minute">{{ a.mood.state }}</span>
+            </div>
+            <div class="small text-muted">{{ a.goal }}</div>
+            <div class="small mt-2">Handled <b>{{ a.handled }}</b> messages
+              {% if a.last %}· last <span class="badge perf perf-{{ a.last.performative }}">{{ a.last.performative }}</span>
+              <span class="rule-tag" title="{{ a.last.action }}">{{ a.last.rule }}</span>{% endif %}</div>
+            {% if a.top_rules %}<div class="small text-muted mt-1">Most used rules:
+              {% for r, n in a.top_rules %}<span class="rule-tag light">{{ r }} ×{{ n }}</span> {% endfor %}</div>{% endif %}
+            <details class="small mt-2"><summary>Beliefs</summary>
+              <pre class="json mt-1">{{ a.beliefs|tojson(indent=2) }}</pre></details>
+          </div>
+        </div>
+      {% endfor %}
+      </div>
+      <div class="small text-muted mt-2">Mood comes from each agent's workload: calm under 10, busy 10–29, overloaded 30+ messages a minute.</div>
+    </div></div>
+  </div>
+  <div class="col-12 col-lg-5">
+    <div class="card h-100"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-baseline"><h2 class="panel-title">Latest agent messages</h2><a href="/admin/messages" class="small fw-semibold">See all</a></div>
+      <ul class="msg-feed">
+        {% for m in recent %}
+        <li><span class="badge perf perf-{{ m.performative }}">{{ m.performative }}</span>
+          {{ m.sender }} → {{ m.receiver }} <code>{{ m.action }}</code>
+          <a href="/admin/conversations/{{ m.conversation_id }}" class="text-muted small d-block"><i class="bi bi-diagram-3"></i> {{ m.conversation_id }}</a></li>
+        {% else %}
+        <li class="text-muted">No messages yet.</li>
+        {% endfor %}
+      </ul>
+    </div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const sales = {{ sales_chart|tojson }};
+const checkins = {{ checkin_chart|tojson }};
+Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+new Chart(document.getElementById('salesChart'), {
+  type: 'bar',
+  data: {labels: sales.labels, datasets: [
+    {label: 'Tickets sold', data: sales.sold, backgroundColor: '#18203a'},
+    {label: 'Checked in', data: sales.checkins, backgroundColor: '#f4b23e'}]},
+  options: {responsive: true, scales: {y: {beginAtZero: true, ticks: {precision: 0}}}}
+});
+new Chart(document.getElementById('checkinChart'), {
+  type: 'line',
+  data: {labels: checkins.labels, datasets: [{label: 'Check-ins per hour', data: checkins.values, borderColor: '#0e6b66', backgroundColor: 'rgba(14,107,102,.12)', tension: .3, fill: true}]},
+  options: {responsive: true, scales: {y: {beginAtZero: true, ticks: {precision: 0}}}}
+});
+</script>
+{% endblock %}

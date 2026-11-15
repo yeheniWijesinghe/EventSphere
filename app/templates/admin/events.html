@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Manage events{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Events</h1><p class="lede">Drafts, published and cancelled events. Cancelling refunds every booking in full.</p></div>
+  <a href="/admin/events/new" class="btn btn-es"><i class="bi bi-plus-lg"></i> New event</a>
+</div>
+{% set colours = {'DRAFT': '', 'PUBLISHED': 'pill-ok', 'CANCELLED': 'pill-bad'} %}
+<div class="list-group">
+  {% for e in events %}
+  <div class="list-group-item">
+    <div class="event-row">
+      <div class="row-link" style="grid-template-columns: 62px 1fr">
+        <div class="mini-date"><span class="d">{{ e.start_time|dt('%d') }}</span><span class="m">{{ e.start_time|dt('%b') }}</span></div>
+        <div>
+          <div class="row-title"><a href="/events/{{ e.id }}">{{ e.title }}</a> <span class="pill {{ colours[e.status] }} ms-1">{{ e.status|lower|capitalize }}</span></div>
+          <div class="row-sub">{{ e.start_time|dt('%a %H:%M') }} – {{ e.end_time|dt('%H:%M') }} · {{ e.venue.name }} · {{ e.tickets_sold }}/{{ e.total_tickets }} sold</div>
+          <div class="d-flex flex-wrap gap-1 mt-1">{% for c in e.categories %}<span class="pill pill-plain">{{ c.name }} · {{ c.price|money }} × {{ c.quantity }}</span>{% endfor %}</div>
+        </div>
+      </div>
+      <div class="actions">
+        {% if e.status == 'DRAFT' %}
+        <form method="post" action="/admin/events/{{ e.id }}/publish"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-sm btn-success">Publish</button></form>
+        {% endif %}
+        {% if e.status != 'CANCELLED' and e.end_time > now %}
+        <form method="post" action="/admin/events/{{ e.id }}/cancel" onsubmit="return confirm('Cancel this event? Every booking will be fully refunded.');"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-sm btn-outline-danger">Cancel event</button></form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="list-group-item text-muted">No events yet. <a href="/admin/events/new">Create the first one</a>.</div>
+  {% endfor %}
+</div>
+{% endblock %}

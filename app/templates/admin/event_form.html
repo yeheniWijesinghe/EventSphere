@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}New event{% endblock %}
+{% block content %}
+<a href="/admin/events" class="back-link"><i class="bi bi-arrow-left"></i> Events</a>
+<div class="page-head mt-2"><div><h1>New event</h1><p class="lede">The VenueAgent checks the slot (with a turnaround buffer) before the event is saved.</p></div></div>
+{% if error %}
+<div class="alert alert-warning">
+  <div class="small text-muted">VenueAgent / validation{% if conversation %} · conversation <a href="/admin/conversations/{{ conversation }}">{{ conversation }}</a>{% endif %}</div>
+  {{ error }}
+  {% if alternatives %}
+  <div class="mt-2">Free slots proposed by the VenueAgent:
+    {% for a in alternatives %}
+    <button type="button" class="btn btn-sm btn-outline-dark m-1 use-slot" data-start="{{ a.start }}" data-end="{{ a.end }}">{{ a.start|dt('%a %d %b %H:%M') }} – {{ a.end|dt('%H:%M') }} ({{ a.note }})</button>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+<form method="post" action="/admin/events" class="card"><div class="card-body d-flex flex-column">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="row g-2">
+    <div class="col-12 col-md-8"><label class="form-label">Title</label><input name="title" class="form-control" value="{{ form.title or '' }}" required></div>
+    <div class="col-12 col-md-4"><label class="form-label">Category</label>
+      <select name="category" class="form-select">{% for c in categories %}<option {% if form.category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
+    <div class="col-12 col-md-4"><label class="form-label">Venue</label>
+      <select name="venue_id" class="form-select">{% for v in venues %}<option value="{{ v.id }}" {% if form.venue_id == v.id %}selected{% endif %}>{{ v.name }} (cap. {{ v.capacity }})</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-4"><label class="form-label">Start</label><input type="datetime-local" name="start_time" id="start_time" class="form-control" value="{{ form.start_time or '' }}" required></div>
+    <div class="col-6 col-md-4"><label class="form-label">End</label><input type="datetime-local" name="end_time" id="end_time" class="form-control" value="{{ form.end_time or '' }}" required></div>
+    <div class="col-12"><label class="form-label">Description</label><textarea name="description" rows="3" class="form-control">{{ form.description or '' }}</textarea></div>
+  </div>
+  <h2 class="form-section">Ticket categories <span class="small text-muted fw-normal">· total may not exceed the venue capacity</span></h2>
+  <div class="row g-2 small text-muted d-none d-sm-flex"><div class="col-5">Name</div><div class="col-3">Price (Rs.)</div><div class="col-3">Quantity</div></div>
+  <div id="cats">
+    {% for c in cats %}
+    <div class="row g-2 mb-2 cat-row">
+      <div class="col-5"><input name="cat_name" class="form-control form-control-sm" placeholder="Name" value="{{ c.name or '' }}"></div>
+      <div class="col-3"><input name="cat_price" type="number" min="0" step="0.01" class="form-control form-control-sm" placeholder="Price" value="{{ c.price or '' }}"></div>
+      <div class="col-3"><input name="cat_qty" type="number" min="1" class="form-control form-control-sm" placeholder="Qty" value="{{ c.quantity or '' }}"></div>
+      <div class="col-1"><button type="button" class="btn btn-sm btn-link text-danger del-cat" aria-label="Remove category"><i class="bi bi-x-lg"></i></button></div>
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" id="addCat" class="btn btn-sm btn-outline-secondary align-self-start">+ Add category</button>
+  <div class="d-flex gap-2 mt-3">
+    <button name="submit_action" value="draft" class="btn btn-outline-secondary">Save as draft</button>
+    <button name="submit_action" value="publish" class="btn btn-es">Publish</button>
+  </div>
+</div></form>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('addCat').addEventListener('click', function () {
+  const rows = document.querySelectorAll('.cat-row');
+  const clone = rows[rows.length - 1].cloneNode(true);
+  clone.querySelectorAll('input').forEach(i => i.value = '');
+  document.getElementById('cats').appendChild(clone);
+});
+document.getElementById('cats').addEventListener('click', function (e) {
+  if (e.target.classList.contains('del-cat') && document.querySelectorAll('.cat-row').length > 1) {
+    e.target.closest('.cat-row').remove();
+  }
+});
+document.querySelectorAll('.use-slot').forEach(b => b.addEventListener('click', function () {
+  document.getElementById('start_time').value = this.dataset.start;
+  document.getElementById('end_time').value = this.dataset.end;
+}));
+</script>
+{% endblock %}
